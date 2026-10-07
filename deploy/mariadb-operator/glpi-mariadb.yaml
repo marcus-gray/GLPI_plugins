@@ -1,0 +1,79 @@
+# MariaDB Galera cluster + GLPI database/user/grants for mariadb-operator.
+# Template: install.sh renders it with envsubst (DB_IMAGE, DB_REPLICAS,
+# DB_STORAGE_SIZE, DB_STORAGE_CLASS) and applies it to the target namespace.
+apiVersion: k8s.mariadb.com/v1alpha1
+kind: MariaDB
+metadata:
+  name: glpi-db
+spec:
+  image: ${DB_IMAGE}
+  replicas: ${DB_REPLICAS}
+  rootPasswordSecretKeyRef:
+    name: glpi-db-root
+    key: password
+  storage:
+    size: ${DB_STORAGE_SIZE}
+    storageClassName: ${DB_STORAGE_CLASS}
+  galera:
+    enabled: true
+  affinity:
+    antiAffinityEnabled: true
+  myCnf: |
+    [mariadb]
+    character_set_server=utf8mb4
+    collation_server=utf8mb4_unicode_ci
+    innodb_buffer_pool_size=512M
+    max_connections=300
+  resources:
+    requests:
+      cpu: 250m
+      memory: 1Gi
+    limits:
+      memory: 2Gi
+---
+apiVersion: k8s.mariadb.com/v1alpha1
+kind: Database
+metadata:
+  name: glpi
+spec:
+  mariaDbRef:
+    name: glpi-db
+  characterSet: utf8mb4
+  collate: utf8mb4_unicode_ci
+---
+apiVersion: k8s.mariadb.com/v1alpha1
+kind: User
+metadata:
+  name: glpi
+spec:
+  mariaDbRef:
+    name: glpi-db
+  passwordSecretKeyRef:
+    name: glpi-db-user
+    key: password
+  maxUserConnections: 200
+---
+apiVersion: k8s.mariadb.com/v1alpha1
+kind: Grant
+metadata:
+  name: glpi-all
+spec:
+  mariaDbRef:
+    name: glpi-db
+  privileges: ["ALL PRIVILEGES"]
+  database: glpi
+  table: "*"
+  username: glpi
+---
+# GLPI reads timezone names to offer timezone selection.
+apiVersion: k8s.mariadb.com/v1alpha1
+kind: Grant
+metadata:
+  name: glpi-timezones
+spec:
+  mariaDbRef:
+    name: glpi-db
+  privileges: ["SELECT"]
+  database: mysql
+  table: time_zone_name
+  username: glpi

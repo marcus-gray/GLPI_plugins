@@ -1,0 +1,10 @@
+# Values for the mariadb-operator Helm chart (https://helm.mariadb.com/mariadb-operator).
+# CRDs are installed separately by install.sh (mariadb-operator-crds chart).
+crds:
+  enabled: false
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    memory: 512Mi
